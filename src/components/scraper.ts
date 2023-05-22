@@ -98,7 +98,7 @@ export abstract class FairworkInteractiveScraper {
                       this.logger.info(`Clicked on [${selector}].`);
                   })
                   .catch((error) => {
-                      this.logger.error(`${error} | ${this.page!.url()}`);
+                      this.logger.error(`${error} | While clicking on [${selector}] | ${this.page!.url()}`);
                   });
           })
           .catch(() => {
@@ -137,9 +137,10 @@ export abstract class FairworkInteractiveScraper {
     )
   }
 
-  protected async clickNext() {
+  protected async clickNext(skip_wait_for_navi?: boolean) {
       await this.click(FairworkInteractiveScraper.SELECTORS.shared.next_button);
       this.logger.info('Moving to next stage ...')
+      if(skip_wait_for_navi) return;
       await this.page.waitForNavigation();
   }
 
@@ -228,7 +229,7 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
                 }
                 case "stage_6": {
                     await this.click(SELECTORS.stage_6.always_casual);
-                    await this.clickNext();
+                    await this.clickNext(true);
                     break
                 }
                 case "stage_7": {
@@ -236,18 +237,19 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
                       SELECTORS.stage_7.age_list+' > '+SELECTORS.stage_7.age.select,
                       this.age
                     );
-                    await this.clickNext();
+                    await this.clickNext(true);
                     break
                 }
                 case "stage_8": {
-                    break;
+                    await this.click(SELECTORS.stage_8.level_list)
+                    await this.clickNext(true)
+                    break
                 }
                 case "specific_stage_8_5": {
                     break;
                 }
                 case "stage_9": {
                     await this.click(SELECTORS.stage_9.select_penalties);
-                    await this.page.waitForNavigation()
                     await this.click(SELECTORS.stage_9.select_all);
                     await this.click(SELECTORS.stage_9.i_know_this_applies);
                     await this.page.waitForNavigation()
@@ -255,7 +257,7 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
                     break
                 }
                 default: {
-                    await this.clickNext();
+                    await this.clickNext(true);
                 }
             }
         }
