@@ -6,7 +6,9 @@ export namespace DataN {
         award_question: string,
         award_answer: string,
         hourly_rate: string,
-        penalty_rate: string,
-        penalty_name: string
+        penalties: {
+            name: string,
+            rate: string
+        }[]
     }
 }

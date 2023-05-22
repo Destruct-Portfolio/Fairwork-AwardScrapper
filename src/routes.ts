@@ -1,4 +1,4 @@
-import { createPuppeteerRouter } from 'crawlee';
+import { createPuppeteerRouter, sleep } from 'crawlee';
 import { ExhaustiveAwardScrapper } from './components/scraper.js';
 
 export const router = createPuppeteerRouter();

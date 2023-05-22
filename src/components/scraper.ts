@@ -1,6 +1,7 @@
 import { Dataset, Log, sleep } from "crawlee";
 import { Page } from "puppeteer";
 import { DynamicTreeExplorer } from "./choice.js";
+import { DataN } from "../types/dataset.js";
 
 export type ScraperConfig = {
   page: Page;
@@ -170,12 +171,43 @@ export abstract class FairworkInteractiveScraper {
       }
       return values;
   }
+
+  protected async getKeyValueFromListing(
+    list_selector: string,
+    key_selector: string,
+    value_selector: string
+  ){
+
+    if (!this.page) return [];
+    const selectors =  {key_selector, value_selector}
+    const values = await this.page
+        .$$eval(list_selector, (els, selectors) => {
+            let penalties: DataN.EntryT['penalties'] = [];
+
+            for (const el of els) {
+                const penalty_name = el.querySelector(selectors.key_selector)?.textContent || ''
+                const penalty_rate = el.querySelector(selectors.value_selector)?.textContent || ''
+            }
+
+            return penalties;
+        }, selectors)
+        .catch((error) => {
+            this.logger.error(`${error} | ${this.page!.url()}`);
+            return [];
+        });
+
+    this.logger.info(`Extracted values [${values}] from [${list_selector}].`);
+
+    return values;
+
+  }
 }
 
 export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
 
   private award: string;
-  state: DynamicTreeExplorer<{ class: null; age: null; }, Record<"class" | "age" , string | null>>;
+  private state: DynamicTreeExplorer<{ class: null; age: null; }, Record<"class" | "age" , string | null>>;
+  private payload: Partial<DataN.EntryT>
 
     constructor(page: Page, logger: Log, award: string) {
         super({ page, logger });
@@ -184,6 +216,8 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
           class: null,
           age: null
         })
+
+        this.payload = {}
 
         this.state.current_choices.class = 'Aboriginal and/or Torres Strait Islander Health Worker / Community Health Worker - Grade 1 - level 1'
         this.state.current_choices.age = '16 years of age or under'
@@ -199,68 +233,80 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
 
     public async run() {
         const SELECTORS = FairworkInteractiveScraper.SELECTORS;
-        for (const stage of Object.keys(SELECTORS)) {
-            if (stage !== "shared")
-                this.logger.info(`Currently at ${stage.replace("_", " ")}`);
-            switch (stage as keyof typeof SELECTORS) {
-                case "shared":
-                    break;
+        
+        // stage 1
+        this.logger.info('Stage 1')
+        await this.clickNext(true);
 
-                case "stage_2": {
-                    await this.click(SELECTORS.stage_2.select_option);
-                    await this.clickNext();
-                    break
-                }
-                case "stage_3": {
-                    await this.selectFromListingBasedOnValue(
-                      SELECTORS.stage_3.award_list+' > '+SELECTORS.stage_3.award.select,
-                      this.award
-                    );
-                    await this.clickNext();
-                    break
-                }
-                case "stage_5": {
-                    await this.selectFromListingBasedOnValue(
-                      SELECTORS.stage_5.classification_list+' > '+SELECTORS.stage_5.class.select,
-                      this.class
-                      );
-                    await this.clickNext();
-                    break
-                }
-                case "stage_6": {
-                    await this.click(SELECTORS.stage_6.always_casual);
-                    await this.clickNext(true);
-                    break
-                }
-                case "stage_7": {
-                    await this.selectFromListingBasedOnValue(
-                      SELECTORS.stage_7.age_list+' > '+SELECTORS.stage_7.age.select,
-                      this.age
-                    );
-                    await this.clickNext(true);
-                    break
-                }
-                case "stage_8": {
-                    await this.click(SELECTORS.stage_8.level_list)
-                    await this.clickNext(true)
-                    break
-                }
-                case "specific_stage_8_5": {
-                    break;
-                }
-                case "stage_9": {
-                    await this.click(SELECTORS.stage_9.select_penalties);
-                    await this.click(SELECTORS.stage_9.select_all);
-                    await this.click(SELECTORS.stage_9.i_know_this_applies);
-                    await this.page.waitForNavigation()
-                    await sleep(1000*1000)
-                    break
-                }
-                default: {
-                    await this.clickNext(true);
-                }
-            }
-        }
+        // stage 2 
+        this.logger.info('Stage 2')
+        await this.click(SELECTORS.stage_2.select_option);
+        await this.clickNext(true);
+
+        // stage 3
+        this.logger.info('Stage 3')
+        await this.selectFromListingBasedOnValue(
+          SELECTORS.stage_3.award_list+' > '+SELECTORS.stage_3.award.select,
+          this.award
+        );
+        await this.clickNext(true);
+        this.payload.award = this.award
+
+        // stage 4
+        this.logger.info('Stage 4')
+        await this.clickNext(true);
+
+        // stage 5
+        this.logger.info('Stage 5')
+        await this.selectFromListingBasedOnValue(
+          SELECTORS.stage_5.classification_list+' > '+SELECTORS.stage_5.class.select,
+          this.class
+          );
+        await this.clickNext();
+        this.payload.level
+
+        // stage 6
+        this.logger.info('Stage 6')
+        await this.click(SELECTORS.stage_6.always_casual);
+        await this.clickNext(true);
+
+        // stage 7 
+        this.logger.info('Stage 7')
+        await this.selectFromListingBasedOnValue(
+          SELECTORS.stage_7.age_list+' > '+SELECTORS.stage_7.age.select,
+          this.age
+        );
+        await this.clickNext(true);
+        this.payload.age = this.age
+
+        // stage 8 - sometimes this shows
+        this.logger.info('Stage 8')
+        //await this.click(SELECTORS.stage_8.level_list)
+        //await this.clickNext(true);
+        this.logger.info('This will be skipped ...')
+        // stage 8.5 - award specific
+        this.logger.info('Stage 8.5')
+        this.logger.info('This will be skipped ...')
+
+        // stage 9 - result page
+        this.logger.info('Stage 9')
+        await this.click(SELECTORS.stage_9.select_penalties);
+        await this.click(SELECTORS.stage_9.select_all);
+        await this.click(SELECTORS.stage_9.i_know_this_applies);
+        await this.page.waitForNavigation()
+
+        const hourly_rate = await this.getText(SELECTORS.stage_9.base_rate)
+        const penalties = await this.getKeyValueFromListing(
+          SELECTORS.stage_9.penalty_list,
+          SELECTORS.stage_9.penalty.name,
+          SELECTORS.stage_9.penalty.hourly_rate
+        )
+
+        this.payload.hourly_rate = hourly_rate
+        this.payload.penalties = penalties
+
+        Dataset.pushData(this.payload)
+
     }
 }
 
