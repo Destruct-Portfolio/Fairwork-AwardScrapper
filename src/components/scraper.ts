@@ -85,6 +85,12 @@ export abstract class FairworkInteractiveScraper {
       this.logger = logger;
   }
 
+  protected async exists(selector: string){
+    if (!this.page) return false;
+    const el = await this.page.$(selector)
+    return !!el
+  }
+
   protected async click(selector: string) {
       if (!this.page) return;
       await this.page
@@ -152,13 +158,13 @@ export abstract class FairworkInteractiveScraper {
       if (!this.page) return [];
       const values = await this.page
           .$$eval(selector, (els) => {
-              let awards = [];
+              let values = [];
 
               for (const el of els) {
-                  awards.push(el.getAttribute("value") || "");
+                  values.push(el.getAttribute("value") || "");
               }
 
-              return awards;
+              return values;
           })
           .catch((error) => {
               this.logger.error(`${error} | ${this.page!.url()}`);
@@ -187,6 +193,11 @@ export abstract class FairworkInteractiveScraper {
             for (const el of els) {
                 const penalty_name = el.querySelector(selectors.key_selector)?.textContent || ''
                 const penalty_rate = el.querySelector(selectors.value_selector)?.textContent || ''
+
+                penalties.push({
+                  name: penalty_name,
+                  rate: penalty_rate
+                })
             }
 
             return penalties;
@@ -219,8 +230,6 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
 
         this.payload = {}
 
-        this.state.current_choices.class = 'Aboriginal and/or Torres Strait Islander Health Worker / Community Health Worker - Grade 1 - level 1'
-        this.state.current_choices.age = '16 years of age or under'
     }
 
     private get age(){
@@ -258,6 +267,12 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
 
         // stage 5
         this.logger.info('Stage 5')
+
+        if(!this.class) {
+          const classes = await this.getValuesFromListing(SELECTORS.stage_5.classification_list+' > '+SELECTORS.stage_5.class.select)
+          this.state.explore(classes)
+        }
+
         await this.selectFromListingBasedOnValue(
           SELECTORS.stage_5.classification_list+' > '+SELECTORS.stage_5.class.select,
           this.class
@@ -272,6 +287,8 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
 
         // stage 7 
         this.logger.info('Stage 7')
+        const ages = await this.getValuesFromListing(SELECTORS.stage_7.age_list)
+        this.state.explore(ages)
         await this.selectFromListingBasedOnValue(
           SELECTORS.stage_7.age_list+' > '+SELECTORS.stage_7.age.select,
           this.age
@@ -281,9 +298,14 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
 
         // stage 8 - sometimes this shows
         this.logger.info('Stage 8')
-        //await this.click(SELECTORS.stage_8.level_list)
-        //await this.clickNext(true);
-        this.logger.info('This will be skipped ...')
+        if(true) {
+          await this.click(SELECTORS.stage_8.level_list)
+          await this.clickNext();
+        } else {
+          this.logger.info('This will be skipped ...')
+        }
+
+
         // stage 8.5 - award specific
         this.logger.info('Stage 8.5')
         this.logger.info('This will be skipped ...')
