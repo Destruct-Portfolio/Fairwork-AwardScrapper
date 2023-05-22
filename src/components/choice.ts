@@ -2,7 +2,7 @@ type OptionsT = Array<string>
 type ChoiceT = string
 
 
-class DynamicTreeExplorer<OptionStagesT extends Record<string, OptionsT | null> = Record<string, OptionsT | null>, StageChoicesT extends Record<keyof OptionStagesT, ChoiceT | null> = Record<keyof OptionStagesT, ChoiceT | null>>{
+export class DynamicTreeExplorer<OptionStagesT extends Record<string, OptionsT | null> = Record<string, OptionsT | null>, StageChoicesT extends Record<keyof OptionStagesT, ChoiceT | null> = Record<keyof OptionStagesT, ChoiceT | null>>{
 
     option_listings: OptionStagesT
     current_choices: StageChoicesT

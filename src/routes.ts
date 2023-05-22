@@ -1,10 +1,10 @@
-import { Dataset, createPuppeteerRouter } from 'crawlee';
-import { StatefulInteractiveScrapper } from './components/scraper.js';
+import { createPuppeteerRouter } from 'crawlee';
+import { ExhaustiveAwardScrapper } from './components/scraper.js';
 
 export const router = createPuppeteerRouter();
 
 router.addDefaultHandler(async ({ page, log }) => {
 
-    await new StatefulInteractiveScrapper(page, log).run()
-    
+    await new ExhaustiveAwardScrapper(page, log, 'MA000115').run()
+    //await new AwardScrapper(page, log).run()
 });
