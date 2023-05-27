@@ -156,6 +156,7 @@ export abstract class FairworkInteractiveScraper {
       parser?: (_: string) => string
   ) {
       if (!this.page) return [];
+      await this.page.waitForSelector(selector)
       const values = await this.page
           .$$eval(selector, (els) => {
               let values = [];
@@ -287,8 +288,10 @@ export class ExhaustiveAwardScrapper extends FairworkInteractiveScraper {
 
         // stage 7 
         this.logger.info('Stage 7')
-        const ages = await this.getValuesFromListing(SELECTORS.stage_7.age_list)
-        this.state.explore(ages)
+        if(!this.age){
+            const ages = await this.getValuesFromListing(SELECTORS.stage_7.age_list+' > '+SELECTORS.stage_7.age.select)
+            this.state.explore(ages)
+        }
         await this.selectFromListingBasedOnValue(
           SELECTORS.stage_7.age_list+' > '+SELECTORS.stage_7.age.select,
           this.age
